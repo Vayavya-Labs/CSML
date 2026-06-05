@@ -1,5 +1,33 @@
+/******************************************************************************
+ * Copyright (c) 2021, Vayavya Labs Pvt. Ltd.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *  * Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *  * Neither the name of Vayavya Labs Pvt. Ltd. nor the
+ *    names of its contributors may be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL VAYAVYA LABS PVT. LTD. BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *******************************************************************************/
+
+
 /**
- * @file configfile_parser.h
+ * @file csml_config_parser.h
  * @author  
  * @version 
  *
@@ -16,7 +44,6 @@
 #include <fstream>
 #include <sstream>
 
-#ifdef ACCELLERA_CCI_STD
 // This is used when CCI parameters are enabled.
 // The format of the configuration file is same as that required by SCML
 // When SCML parameters is enabled, the parser is part of the SCML library
@@ -47,7 +74,7 @@ inline std::map<std::string, std::string> cci_configfile_parser(std::string cci_
                     incfile = cci_config_file.substr(0, slash + 1) + incfile;
                 std::ifstream probe(incfile);
                 if (!probe.is_open())
-                    std::cout << "[config_parser] WARNING: @include file not found: " << incfile << std::endl;
+                    std::cout << "[csml_config_parser] WARNING: @include file not found: " << incfile << std::endl;
                 else {
                     probe.close();
                     auto sub = cci_configfile_parser(incfile);
@@ -111,5 +138,4 @@ inline std::map<std::string, std::string> cci_configfile_parser(std::string cci_
     f.close();
     return cci_params;
 }
-#endif
 
