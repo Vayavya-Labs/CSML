@@ -60,14 +60,18 @@ inline std::string form_report_string( const char* arg)
   return arg ? std::string(arg) : std::string();
 }
 
+inline std::string form_report_string(const char* arg1, const char* arg2)
+{
+  return form_report_string(arg1) + form_report_string(arg2);
+}
+
+inline std::string form_report_string(const std::string& arg1, const char* arg2)
+{
+  return arg1 + form_report_string(arg2);
+}
+
 template<class... va_args>
 std::string form_report_string(std::string arg1, va_args... args);
-
-template<class T, class U>
-inline std::string form_report_string(T arg1, U arg2)
-{
-   return form_report_string(arg1) + form_report_string(arg2);
-}
 
 template<class T, class... va_args>
 inline std::string form_report_string(T arg1, va_args... args)
