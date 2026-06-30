@@ -27,8 +27,11 @@
 
  
 #pragma once
+#include <array>
 #include <functional>
+#include <memory>
 #include <systemc.h>
+#include <utility>
 #include <map>
 #include <tlm.h>
 #include <tlm_utils/simple_initiator_socket.h>
@@ -404,7 +407,7 @@ protected:
 	csml_reg(const csml_reg &) = delete;
 	csml_reg(csml_reg &&) = delete;
 	csml_reg &operator=(csml_reg &&) = delete;
-	~csml_reg() = default;
+	virtual ~csml_reg() = default;
 
 protected:
 	std::string register_name;
@@ -665,139 +668,63 @@ template <class T, unsigned int Quantity>
 class csml_reg_vector
 {
 public:
-	csml_reg_vector(std::string name, typename T::memory_type &mem, unsigned int offset, unsigned int spacing) : reg_vector(name, mem, offset, spacing),
-																												 reg(name + "_" + std::to_string(Quantity - 1), mem, offset + (Quantity - 1) * spacing)
+	csml_reg_vector(std::string name, typename T::memory_type &mem, unsigned int offset, unsigned int spacing)
 	{
+		for (unsigned int i = 0; i < Quantity; ++i)
+			registers[i] = std::make_unique<T>(name + "_" + std::to_string(i), mem, offset + i * spacing);
 	}
 
 	T &operator[](unsigned int num)
 	{
-		if (num == (Quantity - 1))
-		{
-			return reg;
-		}
-		else if (num < Quantity - 1)
-		{
-			return reg_vector[num];
-		}
-		else
-		{
-			CSML_REPORT(ERROR, "MODEL_ERROR", "Access limit of ", Quantity - 1, " Requested access to ", num);
-			throw "Out of bound access";
-		}
+		if (num < Quantity)
+			return *registers[num];
+		CSML_REPORT(ERROR, "MODEL_ERROR", "Access limit of ", Quantity - 1, " Requested access to ", num);
+		throw "Out of bound access";
 	}
 
 	const T &operator[](unsigned int num) const
 	{
-		if (num == (Quantity - 1))
-		{
-			return reg;
-		}
-		else if (num < Quantity - 1)
-		{
-			return reg_vector[num];
-		}
-		else
-		{
-			CSML_REPORT(ERROR, "MODEL_ERROR", "Access limit of ", Quantity - 1, ". Requested access to ", num);
-			throw "Out of bound access";
-		}
+		if (num < Quantity)
+			return *registers[num];
+		CSML_REPORT(ERROR, "MODEL_ERROR", "Access limit of ", Quantity - 1, ". Requested access to ", num);
+		throw "Out of bound access";
 	}
-	constexpr size_t size() const { return Quantity; } 
-	csml_reg_vector<T, Quantity - 1> reg_vector;
-	T reg;
-};
 
-template <class T>
-class csml_reg_vector<T, 1>
-{
-public:
-	csml_reg_vector(std::string name, typename T::memory_type &mem, unsigned int offset, unsigned int spacing) : reg(name + "_" + std::to_string(0), mem, offset)
-	{
-		(void)spacing;
-	}
-	const T &operator[](unsigned int) const
-	{
-		return reg;
-	}
-	T &operator[](unsigned int)
-	{
-		return reg;
-	}
-	constexpr size_t size() const { return 1; }
-	T reg;
+	constexpr size_t size() const { return Quantity; }
+	std::array<std::unique_ptr<T>, Quantity> registers;
 };
 
 template <class T, unsigned int Quantity1, unsigned int Quantity2>
 class csml_reg_2D
 {
 public:
-	csml_reg_2D(std::string name, typename T::memory_type &mem, unsigned int offset, unsigned int stride, unsigned int spacing) : reg_2D_subset(name, mem, offset, stride, spacing),
-																																  reg_row_vector(name + "_" + std::to_string(Quantity1 - 1), mem, offset + (Quantity1 - 1) * stride, spacing)
+	csml_reg_2D(std::string name, typename T::memory_type &mem, unsigned int offset, unsigned int stride, unsigned int spacing)
 	{
+		for (unsigned int i = 0; i < Quantity1; ++i)
+			rows[i] = std::make_unique<csml_reg_vector<T, Quantity2>>(
+				name + "_" + std::to_string(i), mem, offset + i * stride, spacing);
 	}
+
 	csml_reg_vector<T, Quantity2> &operator[](unsigned int num)
 	{
-		if (num == (Quantity1 - 1))
-		{
-			return reg_row_vector;
-		}
-		else if (num < Quantity1 - 1)
-		{
-			return reg_2D_subset[num];
-		}
-		else
-		{
-			/* throw exception */
-			CSML_REPORT(ERROR, "MODEL_ERROR", "Access limit of ", Quantity1 - 1, ". Requested access to ", num);
-			throw "Out of bound access";
-		}
+		if (num < Quantity1)
+			return *rows[num];
+		CSML_REPORT(ERROR, "MODEL_ERROR", "Access limit of ", Quantity1 - 1, ". Requested access to ", num);
+		throw "Out of bound access";
 	}
 
 	const csml_reg_vector<T, Quantity2> &operator[](unsigned int num) const
 	{
-		if (num == (Quantity1 - 1))
-		{
-			return reg_row_vector;
-		}
-		else if (num < Quantity1 - 1)
-		{
-			return reg_2D_subset[num];
-		}
-		else
-		{
-			CSML_REPORT(ERROR, "MODEL_ERROR", "Access limit of ", Quantity1 - 1, ". Requested access to ", num);
-			throw "Out of bound access";
-		}
+		if (num < Quantity1)
+			return *rows[num];
+		CSML_REPORT(ERROR, "MODEL_ERROR", "Access limit of ", Quantity1 - 1, ". Requested access to ", num);
+		throw "Out of bound access";
 	}
+
 	constexpr size_t size() const { return Quantity1 * Quantity2; }
 	constexpr size_t size_row() const { return Quantity1; }
 	constexpr size_t size_column() const { return Quantity2; }
-	csml_reg_2D<T, Quantity1 - 1, Quantity2> reg_2D_subset;
-	csml_reg_vector<T, Quantity2> reg_row_vector;
-};
-
-template <class T, unsigned int Quantity>
-class csml_reg_2D<T, 1, Quantity>
-{
-public:
-	csml_reg_2D(std::string name, typename T::memory_type &mem, unsigned int offset, unsigned int stride, unsigned int spacing) : reg_row_vector(name + "_" + std::to_string(0), mem, offset, spacing)
-	{
-		(void)spacing;
-	}
-	csml_reg_vector<T, Quantity> &operator[](unsigned int)
-	{
-		return reg_row_vector;
-	}
-
-	const csml_reg_vector<T, Quantity> &operator[](unsigned int) const
-	{
-		return reg_row_vector;
-	}
-	constexpr size_t size() const { return 1*Quantity; }
-	constexpr size_t size_row() const { return 1; }
-	constexpr size_t size_column() const { return Quantity; }
-	csml_reg_vector<T, Quantity> reg_row_vector;
+	std::array<std::unique_ptr<csml_reg_vector<T, Quantity2>>, Quantity1> rows;
 };
 
 template <unsigned int N>
