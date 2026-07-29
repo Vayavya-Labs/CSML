@@ -264,7 +264,21 @@ struct csml_memory
 			{
 				try
 				{
-					write_status = write_callbacks[word_offset](write_value);
+					// For registers wider than 32 bits, RV32 firmware issues two
+					// 32-bit transactions to write one word. Legacy callbacks receive
+					// no byte-enable and their handle_write applies write_bit_mask
+					// across the full word, erasing bytes written by the prior half.
+					// Pre-merge with the stored value so the callback sees a full word.
+					DT callback_value = write_value;
+					if (sizeof(DT) > 4u && bytes_in_this_word < (unsigned int)sizeof(DT)) {
+						DT be_mask = 0;
+						for (unsigned int b = 0; b < (unsigned int)sizeof(DT); b++) {
+							if (byte_enable & (1u << b))
+								be_mask |= ((DT)0xFF << (b * 8));
+						}
+						callback_value = (write_value & be_mask) | (memory_block[word_offset] & ~be_mask);
+					}
+					write_status = write_callbacks[word_offset](callback_value);
 				}
 				catch (const std::exception &e)
 				{
